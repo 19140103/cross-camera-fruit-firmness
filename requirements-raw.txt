@@ -1,0 +1,4 @@
+-r requirements.txt
+# Raw preprocessing imports PyTorch through physfruit.realfit.
+# Original environment: torch 2.5.1+cu121. Select the platform build as appropriate.
+torch==2.5.1

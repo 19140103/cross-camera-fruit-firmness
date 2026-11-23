@@ -1,0 +1,47 @@
+# Local environments and editor state
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+secrets*
+
+# Upstream datasets, upstream checkout, and derived spectra
+/DeepHS-Fruit/
+/deephs_fruit/
+/external_data/
+*.npz
+*.npy
+*.bin
+*.hdr
+*.zip
+*.pt
+*.pth
+/physfruit/data/*.txt
+
+# Generated outputs and manuscript/personal files
+/outputs/
+/runs/
+*.log
+*.pdf
+*.doc
+*.docx
+*.tex
+*.aux
+*.png
+*.svg
+*.tif
+*.tiff
+

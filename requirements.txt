@@ -1,0 +1,11 @@
+# Audited local environment: Python 3.11.8; see README for validation scope.
+numpy==1.26.4
+pandas==3.0.5
+scipy==1.17.1
+scikit-learn==1.9.1
+joblib==1.6.0
+threadpoolctl==3.7.0
+matplotlib==3.11.2
+Pillow==12.3.0
+spectral==0.23
+pytest==9.1.1
