@@ -1,34 +1,16 @@
-# 复现说明
+# 运行与统计说明
 
-## 1. 区分三种运行层级
+## 1. 运行任务
 
-1. **冻结结果核验与重绘**：只需仓库内的 CSV 和 Python 依赖，无需原始图像、标注或模型训练。
-2. **配对光谱缓存上的实验重放**：还需要六个配对 NPZ、官方 JSON 标注和上游代码。此次上传没有执行该层级。
-3. **从原始图像重建**：还需要原始 BIN/HDR 文件及 PyTorch。原项目曾清点 392 对 BIN/HDR 文件，完整重建尚未验证。
+| 任务 | 输入 | 主要输出 |
+| --- | --- | --- |
+| 结果核验与图表生成 | 仓库内的固定版本 CSV | 汇总核验、PDF/SVG/PNG 和作图数据 |
+| 配对光谱实验 | 配对 NPZ、官方 JSON 标注、上游测量元数据 | 各方法逐折或逐重复指标 |
+| 原始光谱处理 | 原始 BIN/HDR 图像、官方标注和相机波长表 | 果实平均光谱及配对 NPZ |
 
-此次上传只在现有本地环境验证已有测试、冻结结果与绘图入口，不把这些检查称为完整独立复现。
+Python 依赖见 `requirements.txt`；原始图像处理使用的额外依赖见 `requirements-raw.txt`。
 
-## 2. 主实验与支持实验
-
-主实验入口为 `physfruit/inter_transfer_baselines.py`，提供 Raw、Scale、CORAL、Pair Ridge、PDS(w=1)、PDS(w=2) 六种设置。`inter_domain_final.py` 保留 Raw、Scale、CORAL、Pair Ridge 四种设置；不要把四方法入口当作全量六方法结果。
-
-| 脚本 | 用途 |
-| --- | --- |
-| `inter_transfer_baselines.py` | 六种设置的主比较 |
-| `inter_calibration_budget.py` | 配对校准预算 |
-| `inter_supervised_reference.py` | 目标相机监督参考 |
-| `inter_pairing_ablation.py` | 每折一次打乱配对的消融 |
-| `inter_permutation_null.py` | 重复打乱配对的描述性诊断 |
-| `inter_mechanism_diagnostics.py` | 光谱差异与硬度预测的联合诊断 |
-| `inter_storage_holdout.py` | 数据集内部贮藏后期留出测试及身份清单 |
-| `inter_plsr_sensitivity.py` | PLSR 源模型敏感性 |
-| `inter_band_count_pooled.py` | 缓存选列及重复特征的维度敏感性 |
-| `inter_alpha_sensitivity.py` | 正则化敏感性 |
-| `evaluation.py`、`test_evaluation.py` | 果实分组工具与已有测试 |
-
-表中脚本位于 `physfruit/`。其余代码保留研究过程中的探索实现；尤其是 `inter_nested_*`、`inter_domain_invariant.py` 中的选参入口、`intra_*`、`simtest*`、`fusionfit.py` 等，不应混同于主实验的固定参数方案。测试文件中的嵌套分组检查是工具测试，不表示主实验采用嵌套调参。
-
-## 3. 数据和目录
+## 2. 数据准备
 
 从仓库根目录获取上游代码：
 
@@ -37,7 +19,7 @@ git clone https://github.com/cogsys-tuebingen/deephs_fruit.git deephs_fruit
 git -C deephs_fruit checkout 5f47812a3fb5bd8f0ed5367cedf9b464f83076c1
 ```
 
-按上游说明获取数据，保留官方目录结构：
+从 [DeepHS-Fruit v2](https://cogsys.cs.uni-tuebingen.de/webprojects/DeepHS-Fruit-2023-Datasets/) 获取图像与标注，保留官方路径结构：
 
 ```text
 deephs_fruit/core/...
@@ -45,19 +27,48 @@ DeepHS-Fruit/data/annotations/train_only_labeled_v2.json
 DeepHS-Fruit/data/annotations/val_v2.json
 DeepHS-Fruit/data/annotations/test_v2.json
 DeepHS-Fruit/data/<官方标注引用的图像路径>
-baseline_cache/inter_Avocado_VIS_NIR_overlap.npz
-baseline_cache/inter_Avocado_VIS_VIS_COR_overlap.npz
-baseline_cache/inter_Kaki_VIS_VIS_COR_overlap.npz
-baseline_cache/inter_Kiwi_VIS_NIR_overlap.npz
-baseline_cache/inter_Mango_VIS_VIS_COR_overlap.npz
-baseline_cache/inter_Papaya_VIS_VIS_COR_overlap.npz
 ```
 
-NPZ 包含 `Xa`、`Xb`、`uids`；UID 及数组行序必须一致。当前 `paired_table` 从根目录下的 `baseline_cache` 读取 NPZ；大多数脚本的 `--cache` 参数指定的是**输出目录**，不会改变这个输入位置。标签加载器同时引用上游 `core.measurements` 和 `core.name_convention`，不能只复制 JSON 而省略上游代码。
+标签加载器使用 JSON 中的测量记录，以及上游 `core.measurements`、`core.name_convention` 中的元数据。光谱重采样使用 `core.spectral_io` 中的官方相机波长表。
 
-## 4. 实验命令示例（需要数据，会重新拟合）
+### 生成配对光谱缓存
 
-以下命令用于今后的实验重放，**此次归档未执行**。指定单独输出目录，保留 `baseline_cache` 中的冻结 CSV：
+原始图像处理依赖安装完成后，以猕猴桃为例：
+
+```bash
+python -m pip install -r requirements-raw.txt
+python -m physfruit.inter_transfer --fruit Kiwi --a VIS --b NIR
+```
+
+该入口读取配对图像、计算前景平均光谱并重采样至公共波长位置，将 NPZ 和直接传递诊断 CSV 写入 `baseline_cache/`。后续六方法实验由 `inter_transfer_baselines.py` 执行。
+
+六个配对子集及其参数如下：
+
+| 水果 | `--fruit` | `--a` | `--b` |
+| --- | --- | --- | --- |
+| 鳄梨 | Avocado | VIS | NIR |
+| 鳄梨 | Avocado | VIS | VIS_COR |
+| 柿 | Kaki | VIS | VIS_COR |
+| 猕猴桃 | Kiwi | VIS | NIR |
+| 芒果 | Mango | VIS | VIS_COR |
+| 番木瓜 | Papaya | VIS | VIS_COR |
+
+配对缓存命名为 `inter_<fruit>_<a>_<b>_overlap.npz`，包含 `Xa`、`Xb`、`uids`。两个光谱矩阵的每一行通过 `uids` 对应同一果实记录。实验入口从仓库根目录下的 `baseline_cache/` 读取这些 NPZ。
+
+## 3. 主要实验入口
+
+| 脚本（位于 `physfruit/`） | 用途 |
+| --- | --- |
+| `inter_transfer_baselines.py` | Raw、Scale、CORAL、Pair Ridge、PDS(w=1)、PDS(w=2) 六方法比较 |
+| `inter_calibration_budget.py` | 配对校准样本量预算 |
+| `inter_supervised_reference.py` | 目标相机监督参考 |
+| `inter_pairing_ablation.py` | 每折一次打乱配对的消融 |
+| `inter_permutation_null.py` | 重复打乱配对的描述性分析 |
+| `inter_mechanism_diagnostics.py` | 光谱差异与硬度预测的联合诊断 |
+| `inter_storage_holdout.py` | 贮藏后期留出测试及果实身份清单 |
+| `inter_plsr_sensitivity.py` | PLSR 源模型敏感性 |
+| `inter_band_count_pooled.py` | 缓存选列及重复特征的维度敏感性 |
+| `inter_alpha_sensitivity.py` | 正则化敏感性 |
 
 ```bash
 python -m physfruit.inter_transfer_baselines --fruit Kiwi --a VIS --b NIR --repeats 5 --folds 5 --cache runs/main
@@ -65,27 +76,33 @@ python -m physfruit.inter_calibration_budget --fruit Kiwi --a VIS --b NIR --repe
 python -m physfruit.inter_storage_holdout --fruit Kiwi --a VIS --b NIR --cache runs/storage
 ```
 
-每个入口会计算两个传递方向。六个配对子集是：Avocado/VIS/NIR、Avocado/VIS/VIS_COR、Kaki/VIS/VIS_COR、Kiwi/VIS/NIR、Mango/VIS/VIS_COR、Papaya/VIS/VIS_COR。
+每个入口同时计算两个传递方向。`--cache` 指定结果输出目录，配对 NPZ 的输入目录为 `baseline_cache/`。建议将新结果保存到 `runs/`，与固定版本结果分别管理。
 
-`inter_band_count_pooled.py` 的现有命令行没有 `--cache`；如需重放，可调用其 `run(..., cache=...)` 并显式指定输出目录。不要直接以默认参数运行所有历史脚本。
+特征维度实验通过 Python 接口指定输出目录：
 
-原始光谱重建入口 `inter_transfer.py` 还会运行历史诊断，并向 `baseline_cache` 写 NPZ 和 CSV；不应把它生成的历史诊断 CSV 当作主结果。应在独立工作副本中操作。它通过 `realfit.py` 导入 PyTorch；完整依赖另见 `requirements-raw.txt`。
+```python
+from physfruit.inter_band_count_pooled import run
 
-`basis.camera_wavelengths` 保留原代码的端点线性回退行为。重建论文输入时必须确认成功加载了上游真实波长表；回退网格不能作为等价复现输入。历史 PROSPECT 物理模型还需要本仓库未分发的系数表，见来源说明。
+run("Kiwi", "VIS", "NIR", repeats=5, folds=5, cache="runs/features")
+```
 
-## 5. 统计口径
+## 4. 统计口径
 
-- 主实验为五次重复的五折物理果实分组验证。每次重复先汇合各测试折预测，再计算 R²、RMSE、MAE；均值和样本 SD 在五次重复间汇总。
-- 源模型为 Elastic Net；配对映射固定正则化系数为 `5 × p`，20 列时为 100。PLSR 是敏感性分析。
-- 预算 32 是名义上限，实际数量为预算与该折可用配对果实数的较小值。预算重复层级汇总应先在每次划分内平均五次子抽样，再跨五次划分计算均值与 SD。
-- 配对身份差值为真实配对 R² 减打乱配对 R²；相对基准差值为 Pair Ridge R² 减 Raw R²，两者不能混用。
-- 重复置换图先在每次划分内平均 50 次置换差值，再跨五次划分汇总。250 个差值的分位数仅是描述性范围，不是置信区间；零分布比例不是 p 值。
-- 后期留出是数据集内部时序压力测试，不是外部验证。源模型、映射和时间对照仅拟合早期训练数据；脚本检查训练/测试物理果实身份不重叠。
-- “32 维”设置从 20 列缓存选列，含重复特征，不是 32 个不同波长。
+- **主验证**：采用五次重复的五折物理果实分组验证。每次重复先汇合各测试折预测，再计算指标；均值与样本 SD 在五次重复间汇总。
+- **模型与映射**：源模型为 Elastic Net，目标标签采用对数变换，预测经指数减一还原至原始硬度尺度。Pair Ridge 的正则化系数为 `5 × p`，20 列时为 100。PLSR 用于源模型敏感性分析。
+- **校准预算**：实际校准数量为名义预算与该折可用配对果实数的较小值。先在每次划分内平均五次子抽样指标，再跨五次划分计算均值与 SD。
+- **两类差值**：配对身份差值为真实配对 R² 减打乱配对 R²；相对基准的改善为 Pair Ridge R² 减 Raw R²。
+- **重复置换**：每次划分内平均 50 次置换差值，再跨五次划分汇总；250 个差值的分位数用于描述置换与划分共同形成的变化范围。
+- **贮藏测试**：按数据集内部的贮藏日划分早期训练与后期测试样本，所有模型均在早期数据上拟合，并记录训练与测试的果实身份。
+- **特征维度**：8、16、32 列设置均从 20 个波长的缓存中选列，其中 32 列设置包含重复特征。
 
-## 6. 上传副本的改动范围
+## 5. 结果与来源记录
 
-`inter_transfer.py`、`inter_overlap.py`、`basis.py`、`envi.py` 中四处旧盘符路径改为项目相对路径。其余原有 Python 源文件逐字节保留。具体哈希见 `source_manifest.csv`。未调整模型、种子、数据筛选或统计计算。
+`main_results_frozen_2026-10-03.csv` 汇总六种设置的主要指标；六个 `inter_transfer_baselines_*.csv` 保留各子集的逐折与逐重复结果。其他 CSV 按实验名称和配对子集命名。
 
-冻结 CSV 按原文件复制并记录哈希。旧的、只有四个子集的 `inter_domain_final_*.csv` 历史结果未收入归档；完整主比较以六个 `inter_transfer_baselines_*.csv` 和 `main_results_frozen_2026-10-03.csv` 为准。
+- [结果清单](frozen_results_manifest.csv)：文件大小与 SHA-256。
+- [代码来源清单](source_manifest.csv)：归档代码的来源与版本对应关系。
+- [代码与结果索引](paper_scope.md)：论文入口、公共模块及扩展分析。
+- [验证记录](upload_validation.md)：分组测试、结果汇总与绘图检查。
 
+扩展物理模型的 PROSPECT 系数表按 [来源说明](../physfruit/data/SOURCE.md) 获取，放入 `physfruit/data/`。

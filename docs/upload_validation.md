@@ -1,13 +1,27 @@
-# 上传前检查记录
+# 验证记录
 
-在原项目的 Python 3.11.8 环境中，对独立上传副本执行以下检查：
+验证环境：Python 3.11.8，依赖版本见仓库根目录的 requirements 文件。
 
-- 48 个 Python 文件语法解析通过：44 个研究文件、3 个原有绘图脚本、1 个冻结结果核验工具。
-- `python -m pytest physfruit/test_evaluation.py -q`：5 项已有测试通过。
-- `python tools/check_frozen_results.py`：61 个冻结 CSV 的字节数及 SHA-256 一致；72 行主表的 R²、RMSE、MAE 均值与 SD 均与六个逐重复缓存重新汇总的结果一致。
-- 主要计数为 10/12 个方向相对 Raw 均值提高、6/12 个方向平均 R² 为正、4/12 个方向取得六种设置中的严格最高均值。
-- 3 个原有绘图脚本在上传副本中运行成功。其输出的 6 个作图数据 CSV 与此前审计版逐字节一致。PDF、SVG、PNG 输出留在被 Git 忽略的 `outputs/` 中。
-- 上传文件经过凭据特征和旧盘符路径扫描；未发现匹配项。未包含论文、个人资料、原始图像、配对 NPZ、上游代码副本、虚拟环境或访问凭据。
-- 来源 Python 文件与记录的来源哈希一致，原项目未修改。上传副本仅四处数据路径改为相对路径；冻结 CSV 未改动。
+| 检查项 | 结果 |
+| --- | --- |
+| Python 语法 | 48 个文件解析通过 |
+| 果实分组测试 | 5 项测试通过 |
+| 固定版本 CSV | 61 个文件的大小和 SHA-256 一致 |
+| 主表汇总 | 72 行 R²、RMSE、MAE 均值及 SD 与逐重复缓存汇总一致 |
+| 主要比较计数 | 高于 Raw 10/12、正平均 R² 6/12、六方法最高平均 R² 4/12 |
+| 图表生成 | 3 个脚本运行成功，导出 PDF、SVG、600 dpi PNG |
+| 作图数据 | 6 个作图数据 CSV 与固定版本记录一致 |
 
-这些检查没有重新训练模型，没有执行完整原始数据重建，也没有验证干净环境重新安装。
+分组测试：
+
+```bash
+python -m pytest physfruit/test_evaluation.py -q
+```
+
+结果核验：
+
+```bash
+python tools/check_frozen_results.py
+```
+
+代码及结果文件的对应关系分别记录在 `source_manifest.csv` 和 `frozen_results_manifest.csv` 中。
