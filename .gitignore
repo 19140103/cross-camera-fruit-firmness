@@ -45,3 +45,5 @@ secrets*
 *.tif
 *.tiff
 
+# Published figure previews
+!/docs/figures/*.png

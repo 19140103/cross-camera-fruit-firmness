@@ -4,7 +4,7 @@
 
 本项目基于 **DeepHS-Fruit v2** 公开高光谱数据集，研究更换相机后果实硬度预测模型的复用效果。通过果实身份分组验证、配对关系对照、校准样本量实验和贮藏后期留出测试，评估光谱校准在不同水果、相机组合及贮藏阶段下的表现。
 
-仓库提供实验代码、固定版本结果 CSV、绘图脚本和运行说明。
+仓库提供实验代码、固定版本结果 CSV、结果图、绘图脚本和运行说明。
 
 ## 研究方法
 
@@ -53,6 +53,7 @@ cross-camera-fruit-firmness/
 ├── docs/
 │   ├── reproduction.md         # 数据准备、实验命令与统计口径
 │   ├── paper_scope.md          # 论文实验入口与扩展模块索引
+│   ├── figures/                # 结果图预览
 │   ├── frozen_results_manifest.csv
 │   └── source_manifest.csv
 ├── requirements.txt
@@ -131,6 +132,26 @@ python -m physfruit.inter_storage_holdout --fruit Kiwi --a VIS --b NIR --cache r
 ```
 
 每个入口计算两个传递方向。上述命令将新实验结果分别保存到 `runs/` 下的对应目录；配对光谱输入从 `baseline_cache/` 读取。
+
+## 结果图与下载
+
+[下载结果图与作图数据包](https://github.com/19140103/cross-camera-fruit-firmness/releases/download/figures-2026-11-24/experimental-figures-2026-11-24.zip)
+
+图包包含三组主图和配对身份分析单图，提供 **600 dpi PNG、矢量 PDF 和 SVG**，并附六份作图数据 CSV、61 份固定版本实验结果 CSV、三个绘图脚本、环境版本和文件校验清单。解压后可直接查看高清图，也可运行随附脚本重新生成图件。
+
+**光谱差异与硬度预测性能。** 横轴为光谱差异降幅，纵轴为 Pair Ridge 的绝对 R²；误差棒表示五次划分重复间的标准差。
+
+![光谱差异降幅与 Pair Ridge 绝对 R²](docs/figures/figure3.png)
+
+**校准预算与贮藏后期留出测试。** A 展示不同名义校准预算下的平均 R²，先在每次划分重复内平均五次子抽样，再汇总五次重复；实际校准对数取预算与训练折可用配对果实数的较小值。B 展示在早期数据上拟合后，对后期果实的预测表现，单元格标注绝对 R²。
+
+![校准预算与贮藏后期留出测试](docs/figures/figure4.png)
+
+**源模型敏感性与配对身份。** A 展示采用不同 PLSR 成分数建立源模型时的 Pair Ridge 平均 R²。B 展示真实配对减打乱配对的 R² 差值：蓝点为各重复内的均值，黑色菱形为五次重复的平均值，灰色区间为 250 个差值的 2.5%—97.5% 描述性分位范围。
+
+![PLSR 源模型敏感性与配对身份分析](docs/figures/figure5.png)
+
+[单独查看配对身份分析图](docs/figures/pair_identity.png)。图中 VC 表示 VIS_COR；文件名中的 Figure3、Figure4、Figure5 对应绘图脚本编号。
 
 ## 图表生成
 
